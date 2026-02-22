@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     displayUserGreeting();
     setupRoleBasedAccess();
+    loadEmployees();
+    populateEmployeeDropdown();
 });
 
 // ===================================
@@ -76,6 +78,7 @@ function logout() {
 function initializeApp() {
     setupNavigation();
     setupFormSubmission();
+    setupEmployeeFormSubmission();
     setupFilters();
     loadTasks();
     updateStats();
@@ -111,6 +114,11 @@ function navigateToSection(sectionId) {
     // Reload tasks if navigating to tasks section
     if (sectionId === 'tasks') {
         loadTasks('all');
+    }
+    
+    // Reload employees if navigating to employees section
+    if (sectionId === 'employees') {
+        loadEmployees();
     }
     
     // Update stats if navigating to home
@@ -611,9 +619,184 @@ function escapeHtml(text) {
 }
 
 // ===================================
+// Employee Management
+// ===================================
+function getEmployees() {
+    const employeesJson = localStorage.getItem('workAssignmentEmployees');
+    return employeesJson ? JSON.parse(employeesJson) : [];
+}
+
+function saveEmployee(employee) {
+    let employees = getEmployees();
+    employees.push(employee);
+    localStorage.setItem('workAssignmentEmployees', JSON.stringify(employees));
+    loadEmployees();
+    populateEmployeeDropdown();
+}
+
+function deleteEmployee(username) {
+    let employees = getEmployees();
+    employees = employees.filter(emp => emp.username !== username);
+    localStorage.setItem('workAssignmentEmployees', JSON.stringify(employees));
+    loadEmployees();
+    populateEmployeeDropdown();
+}
+
+function setupEmployeeFormSubmission() {
+    const form = document.getElementById('employeeForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('employeeUsername').value.trim();
+        const password = document.getElementById('employeePassword').value;
+        
+        // Validate username length
+        if (username.length < 3) {
+            showAlert('Username must be at least 3 characters long!', 'error');
+            return;
+        }
+        
+        // Validate password length
+        if (password.length < 6) {
+            showAlert('Password must be at least 6 characters long!', 'error');
+            return;
+        }
+        
+        // Check if username already exists
+        const employees = getEmployees();
+        if (employees.some(emp => emp.username === username)) {
+            showAlert('Username already exists!', 'error');
+            return;
+        }
+        
+        // Create employee object
+        const employee = {
+            username: username,
+            password: password,
+            role: 'employee',
+            displayName: username.charAt(0).toUpperCase() + username.slice(1),
+            createdAt: new Date().toISOString()
+        };
+        
+        // Save employee
+        saveEmployee(employee);
+        
+        // Reset form
+        form.reset();
+        
+        // Show success message
+        showAlert('Employee added successfully!', 'success');
+    });
+}
+
+function loadEmployees() {
+    const employeesContainer = document.getElementById('employeesContainer');
+    const emptyState = document.getElementById('employeesEmptyState');
+    const employees = getEmployees();
+    
+    if (!employeesContainer) return;
+    
+    // Clear container
+    employeesContainer.innerHTML = '';
+    
+    // Check if there are no employees
+    if (employees.length === 0) {
+        emptyState.classList.add('show');
+        employeesContainer.style.display = 'none';
+    } else {
+        emptyState.classList.remove('show');
+        employeesContainer.style.display = 'grid';
+        
+        // Sort employees by creation date
+        employees.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        // Render each employee
+        employees.forEach(employee => {
+            const employeeCard = createEmployeeCard(employee);
+            employeesContainer.appendChild(employeeCard);
+        });
+    }
+}
+
+function createEmployeeCard(employee) {
+    const card = document.createElement('div');
+    card.className = 'employee-card';
+    
+    // Get first letter of username for icon
+    const firstLetter = employee.username.charAt(0).toUpperCase();
+    
+    // Format creation date
+    const createdDate = new Date(employee.createdAt);
+    const formattedDate = createdDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    
+    card.innerHTML = `
+        <div class="employee-header">
+            <div class="employee-icon">${firstLetter}</div>
+            <div class="employee-info">
+                <h3>${escapeHtml(employee.displayName)}</h3>
+                <p>Employee Account</p>
+            </div>
+        </div>
+        <div class="employee-details">
+            <div class="employee-detail-item">
+                <span class="employee-detail-label">Username:</span>
+                <span class="employee-detail-value">${escapeHtml(employee.username)}</span>
+            </div>
+            <div class="employee-detail-item">
+                <span class="employee-detail-label">Created:</span>
+                <span class="employee-detail-value">${formattedDate}</span>
+            </div>
+        </div>
+        <div class="employee-actions">
+            <button class="employee-btn delete-btn" onclick="confirmDeleteEmployee('${escapeHtml(employee.username)}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Delete Employee
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+function confirmDeleteEmployee(username) {
+    if (confirm(`Are you sure you want to delete employee "${username}"? This action cannot be undone.`)) {
+        deleteEmployee(username);
+        showAlert('Employee deleted successfully!', 'success');
+    }
+}
+
+function populateEmployeeDropdown() {
+    const assignToSelect = document.getElementById('assignTo');
+    if (!assignToSelect) return;
+    
+    const employees = getEmployees();
+    
+    // Clear existing options except the first (placeholder)
+    assignToSelect.innerHTML = '<option value="">Select Employee</option>';
+    
+    // Add employees to dropdown
+    employees.forEach(employee => {
+        const option = document.createElement('option');
+        option.value = employee.displayName;
+        option.textContent = employee.displayName;
+        assignToSelect.appendChild(option);
+    });
+}
+
+// ===================================
 // Export functions for global access
 // ===================================
 window.navigateToSection = navigateToSection;
 window.toggleTaskCompletion = toggleTaskCompletion;
 window.confirmDeleteTask = confirmDeleteTask;
+window.confirmDeleteEmployee = confirmDeleteEmployee;
 window.logout = logout;

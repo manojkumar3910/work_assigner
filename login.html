@@ -248,11 +248,16 @@
             window.location.href = 'index.html';
         }
 
-        // Define users with roles
-        const users = [
-            { username: 'admin1', password: '123456', role: 'admin', displayName: 'Admin' },
-            { username: 'employee1', password: '123456', role: 'employee', displayName: 'Employee 1' }
+        // Define default admin users
+        const defaultUsers = [
+            { username: 'admin', password: 'admin123', role: 'admin', displayName: 'Admin' }
         ];
+
+        // Get employees from localStorage
+        function getStoredEmployees() {
+            const employeesJson = localStorage.getItem('workAssignmentEmployees');
+            return employeesJson ? JSON.parse(employeesJson) : [];
+        }
 
         // Handle login form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
@@ -262,8 +267,12 @@
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
             
+            // Combine default users with stored employees
+            const storedEmployees = getStoredEmployees();
+            const allUsers = [...defaultUsers, ...storedEmployees];
+            
             // Check credentials
-            const user = users.find(u => u.username === username && u.password === password);
+            const user = allUsers.find(u => u.username === username && u.password === password);
             
             if (user) {
                 // Set login status
