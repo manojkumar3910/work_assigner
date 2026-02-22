@@ -275,8 +275,9 @@
             const user = allUsers.find(u => u.username === username && u.password === password);
             
             if (user) {
-                // Set login status
+                // Set login status with timestamp
                 localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('loginTime', Date.now().toString());
                 localStorage.setItem('username', user.username);
                 localStorage.setItem('userRole', user.role);
                 localStorage.setItem('displayName', user.displayName);

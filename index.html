@@ -14,14 +14,55 @@
 <body>
     <!-- Authentication Check -->
     <script>
+        // Session timeout: 5 minutes (300000 ms)
+        const SESSION_TIMEOUT = 5 * 60 * 1000;
+        
         // Check if user is logged in
         if (localStorage.getItem('isLoggedIn') !== 'true') {
             window.location.href = 'login.html';
         }
         
+        // Check if session has expired
+        const loginTime = parseInt(localStorage.getItem('loginTime') || '0');
+        if (Date.now() - loginTime > SESSION_TIMEOUT) {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('loginTime');
+            localStorage.removeItem('username');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('displayName');
+            alert('Session expired. Please login again.');
+            window.location.href = 'login.html';
+        }
+        
+        // Refresh login time on page load
+        localStorage.setItem('loginTime', Date.now().toString());
+        
         // Store user role for use in script
         window.userRole = localStorage.getItem('userRole') || 'employee';
         window.currentUser = localStorage.getItem('displayName') || 'User';
+        
+        // Auto-logout after 5 minutes of inactivity
+        let inactivityTimer;
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            localStorage.setItem('loginTime', Date.now().toString());
+            inactivityTimer = setTimeout(function() {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('loginTime');
+                localStorage.removeItem('username');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('displayName');
+                alert('Session expired due to inactivity. Please login again.');
+                window.location.href = 'login.html';
+            }, SESSION_TIMEOUT);
+        }
+        
+        // Reset timer on user activity
+        ['mousemove', 'keypress', 'click', 'scroll'].forEach(function(event) {
+            document.addEventListener(event, resetInactivityTimer);
+        });
+        
+        resetInactivityTimer();
     </script>
 
     <!-- Header -->
